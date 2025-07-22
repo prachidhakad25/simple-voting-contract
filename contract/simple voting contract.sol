@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 /**
  * @title Simple Voting Contract
  * @dev A decentralized voting system for transparent and secure elections
- * @author Your Name
  */
 contract Project {
     // Struct to represent a candidate
@@ -28,6 +27,9 @@ contract Project {
     bool public votingOpen;
     uint256 public totalVotes;
     uint256 public candidateCount;
+
+    // New: Array to store all voter addresses
+    address[] private allVoters;
     
     // Mappings
     mapping(uint256 => Candidate) public candidates;
@@ -108,7 +110,9 @@ contract Project {
             hasVoted: false,
             votedCandidateId: 0
         });
-        
+
+        allVoters.push(_voter); // New: track registered voter
+
         emit VoterRegistered(_voter);
     }
     
@@ -121,7 +125,7 @@ contract Project {
     }
     
     /**
-     * @dev Core Function 1: Cast a vote for a candidate
+     * @dev Cast a vote for a candidate
      * @param _candidateId ID of the candidate to vote for
      */
     function vote(uint256 _candidateId) external 
@@ -132,25 +136,16 @@ contract Project {
         require(_candidateId > 0 && _candidateId <= candidateCount, "Invalid candidate ID");
         require(candidates[_candidateId].exists, "Candidate does not exist");
         
-        // Mark voter as having voted
         voters[msg.sender].hasVoted = true;
         voters[msg.sender].votedCandidateId = _candidateId;
-        
-        // Increment candidate's vote count
         candidates[_candidateId].voteCount++;
-        
-        // Increment total votes
         totalVotes++;
         
         emit VoteCast(msg.sender, _candidateId);
     }
     
     /**
-     * @dev Core Function 2: Get candidate details
-     * @param _candidateId ID of the candidate
-     * @return id Candidate ID
-     * @return name Candidate name
-     * @return voteCount Number of votes received
+     * @dev Get candidate details
      */
     function getCandidate(uint256 _candidateId) external view returns (
         uint256 id,
@@ -165,10 +160,7 @@ contract Project {
     }
     
     /**
-     * @dev Core Function 3: Get voting results
-     * @return winningCandidateId ID of the winning candidate
-     * @return winningCandidateName Name of the winning candidate
-     * @return winningVoteCount Number of votes for the winning candidate
+     * @dev Get voting results
      */
     function getResults() external view returns (
         uint256 winningCandidateId,
@@ -180,7 +172,6 @@ contract Project {
         uint256 winningId = 0;
         uint256 highestVoteCount = 0;
         
-        // Find candidate with most votes
         for (uint256 i = 1; i <= candidateCount; i++) {
             if (candidates[i].exists && candidates[i].voteCount > highestVoteCount) {
                 highestVoteCount = candidates[i].voteCount;
@@ -197,10 +188,6 @@ contract Project {
     
     /**
      * @dev Get voter information
-     * @param _voter Address of the voter
-     * @return isRegistered Whether the voter is registered
-     * @return hasVoted Whether the voter has cast a vote
-     * @return votedCandidateId ID of the candidate voted for (if voted)
      */
     function getVoterInfo(address _voter) external view returns (
         bool isRegistered,
@@ -213,10 +200,6 @@ contract Project {
     
     /**
      * @dev Get election statistics
-     * @return _electionName Name of the election
-     * @return _totalVotes Total number of votes cast
-     * @return _candidateCount Total number of candidates
-     * @return _votingOpen Whether voting is currently open
      */
     function getElectionStats() external view returns (
         string memory _electionName,
@@ -228,10 +211,7 @@ contract Project {
     }
     
     /**
-     * @dev Get all candidates (for display purposes)
-     * @return candidateIds Array of candidate IDs
-     * @return candidateNames Array of candidate names
-     * @return voteCounts Array of vote counts
+     * @dev Get all candidates
      */
     function getAllCandidates() external view returns (
         uint256[] memory candidateIds,
@@ -252,4 +232,27 @@ contract Project {
         
         return (ids, names, counts);
     }
+
+    /**
+     * @dev NEW FUNCTION: Get all registered voters and their voting status (admin only)
+     */
+    function getAllVoters() external view onlyAdmin returns (
+        address[] memory voterAddresses,
+        bool[] memory hasVotedFlags
+    ) {
+        uint256 total = allVoters.length;
+        address[] memory addresses = new address[](total);
+        bool[] memory votedFlags = new bool[](total);
+
+        for (uint256 i = 0; i < total; i++) {
+            address voter = allVoters[i];
+            addresses[i] = voter;
+            votedFlags[i] = voters[voter].hasVoted;
+        }
+
+        return (addresses, votedFlags);
+    }
 }
+
+
+    
